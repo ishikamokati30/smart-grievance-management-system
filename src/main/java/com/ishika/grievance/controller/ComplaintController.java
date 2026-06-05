@@ -54,4 +54,12 @@ public class ComplaintController {
 
         return complaintService.deleteComplaint(id);
     }
+    @PostMapping("/user/{userId}")
+    public String createComplaintForUser(
+            @PathVariable Long userId,
+            @RequestBody ComplaintRequest request) {
+
+        return complaintService
+                .createComplaintForUser(userId, request);
+}
 }

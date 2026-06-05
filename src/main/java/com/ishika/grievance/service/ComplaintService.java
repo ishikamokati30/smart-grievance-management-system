@@ -8,13 +8,17 @@ import org.springframework.stereotype.Service;
 import com.ishika.grievance.dto.ComplaintRequest;
 import com.ishika.grievance.dto.UpdateStatusRequest;
 import com.ishika.grievance.entity.Complaint;
+import com.ishika.grievance.entity.User;
+import com.ishika.grievance.exception.UserNotFoundException;
 import com.ishika.grievance.repository.ComplaintRepository;
+import com.ishika.grievance.repository.UserRepository;
 
 @Service
 public class ComplaintService {
 	  @Autowired
 	    private ComplaintRepository complaintRepository;
-
+	  @Autowired
+	  private UserRepository userRepository;
 	    public String createComplaint(
 	            ComplaintRequest request) {
 
@@ -62,5 +66,26 @@ public class ComplaintService {
 	        complaintRepository.deleteById(id);
 
 	        return "Complaint Deleted Successfully";
+	    }
+	    public String createComplaintForUser(
+	            Long userId,
+	            ComplaintRequest request) {
+
+	        User user = userRepository.findById(userId)
+	                .orElseThrow(() ->
+	                new UserNotFoundException("User Not Found"));
+	        Complaint complaint = new Complaint();
+
+	        complaint.setTitle(request.getTitle());
+	        complaint.setDescription(request.getDescription());
+	        complaint.setCategory(request.getCategory());
+	        complaint.setPriority(request.getPriority());
+	        complaint.setStatus("OPEN");
+
+	        complaint.setUser(user);
+
+	        complaintRepository.save(complaint);
+
+	        return "Complaint Created Successfully";
 	    }
 }

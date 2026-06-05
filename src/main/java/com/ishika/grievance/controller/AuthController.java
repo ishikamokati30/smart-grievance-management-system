@@ -10,6 +10,8 @@ import com.ishika.grievance.dto.LoginRequest;
 import com.ishika.grievance.dto.RegisterRequest;
 import com.ishika.grievance.service.AuthService;
 
+import jakarta.validation.Valid;
+
 @RestController
 	@RequestMapping("/api/auth")
 	public class AuthController {
@@ -18,7 +20,7 @@ import com.ishika.grievance.service.AuthService;
 	    private AuthService authService;
 
 	    @PostMapping("/register")
-	    public String register(@RequestBody RegisterRequest request) {
+	    public String register( @Valid @RequestBody RegisterRequest request) {
 
 	        return authService.register(request);
 	    }
