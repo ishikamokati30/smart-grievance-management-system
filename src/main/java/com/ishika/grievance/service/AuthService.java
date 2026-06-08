@@ -9,7 +9,7 @@ import com.ishika.grievance.dto.RegisterRequest;
 import com.ishika.grievance.entity.User;
 import com.ishika.grievance.repository.UserRepository;
 import com.ishika.grievance.security.JwtUtil;
-
+import com.ishika.grievance.enums.Role;
 @Service
 public class AuthService {
 	
@@ -32,7 +32,7 @@ public class AuthService {
 	                passwordEncoder.encode(
 	                        request.getPassword()));
 
-	        user.setRole("USER");
+	        user.setRole(Role.USER);
 
 	        userRepository.save(user);
 

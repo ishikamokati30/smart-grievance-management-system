@@ -30,4 +30,22 @@ public class JwtUtil {
                 .signWith(key)
                 .compact();
     }
+    public String extractEmail(String token) {
+
+        return Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getSubject();
+    }
+    public boolean validateToken(
+            String token,
+            String email) {
+
+        String extractedEmail =
+                extractEmail(token);
+
+        return extractedEmail.equals(email);
+    }
 }

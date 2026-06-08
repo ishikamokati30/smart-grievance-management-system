@@ -3,9 +3,12 @@ package com.ishika.grievance.entity;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.ishika.grievance.enums.Role;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -25,8 +28,8 @@ public class User {
 	private String email;
 	 
 	private String password;
-	private String role;
-
+	@Enumerated(EnumType.STRING)
+	private Role role;
 	@JsonManagedReference
 	@OneToMany(mappedBy = "user")
 	private List<Complaint> complaints;
@@ -35,7 +38,7 @@ public class User {
 		
 	}
 
-	public User(Long id, String name, String email, String password, String role) {
+	public User(Long id, String name, String email, String password,Role role) {
 		super();
 		this.id = id;
 		this.name = name;
@@ -76,11 +79,11 @@ public class User {
 		this.password = password;
 	}
 
-	public String getRole() {
+	public Role getRole() {
 		return role;
 	}
 
-	public void setRole(String role) {
+	public void setRole(Role role) {
 		this.role = role;
 	}
 	
