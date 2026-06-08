@@ -8,9 +8,13 @@ import com.ishika.grievance.dto.LoginRequest;
 import com.ishika.grievance.dto.RegisterRequest;
 import com.ishika.grievance.entity.User;
 import com.ishika.grievance.repository.UserRepository;
+import com.ishika.grievance.security.JwtUtil;
 
 @Service
 public class AuthService {
+	
+	@Autowired
+	private JwtUtil jwtUtil;
 	
 	@Autowired
 	private UserRepository userRepository;
@@ -52,7 +56,7 @@ public class AuthService {
 		        return "Invalid Password";
 		    }
 
-		    return "Login Successful";
+		    return jwtUtil.generateToken(user.getEmail());
 		}
 
 }
