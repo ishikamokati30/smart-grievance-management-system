@@ -33,6 +33,11 @@ public class Complaint {
     @JoinColumn(name = "user_id")
     private User user;
     
+    @JsonBackReference
+    @ManyToOne
+    @JoinColumn(name = "department_id")
+    private Department department;
+    
     public Complaint() {
     }
 
