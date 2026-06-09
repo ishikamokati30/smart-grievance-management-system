@@ -30,7 +30,7 @@ public class CustomUserDetailsService
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getEmail())
                 .password(user.getPassword())
-                .authorities("USER")
+                .authorities(user.getRole().name())
                 .build();
     }
 }

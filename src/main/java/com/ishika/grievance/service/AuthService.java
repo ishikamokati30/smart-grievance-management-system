@@ -56,7 +56,7 @@ public class AuthService {
 		        return "Invalid Password";
 		    }
 
-		    return jwtUtil.generateToken(user.getEmail());
+		    return jwtUtil.generateToken(user.getEmail(),user.getRole().name());
 		}
 
 }
