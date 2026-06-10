@@ -8,9 +8,11 @@ import org.springframework.stereotype.Service;
 import com.ishika.grievance.dto.ComplaintRequest;
 import com.ishika.grievance.dto.UpdateStatusRequest;
 import com.ishika.grievance.entity.Complaint;
+import com.ishika.grievance.entity.Department;
 import com.ishika.grievance.entity.User;
 import com.ishika.grievance.exception.UserNotFoundException;
 import com.ishika.grievance.repository.ComplaintRepository;
+import com.ishika.grievance.repository.DepartmentRepository;
 import com.ishika.grievance.repository.UserRepository;
 
 @Service
@@ -19,6 +21,9 @@ public class ComplaintService {
 	    private ComplaintRepository complaintRepository;
 	  @Autowired
 	  private UserRepository userRepository;
+	  @Autowired
+	  private DepartmentRepository departmentRepository;
+	  
 	    public String createComplaint(
 	            ComplaintRequest request) {
 
@@ -82,6 +87,15 @@ public class ComplaintService {
 	        complaint.setPriority(request.getPriority());
 	        complaint.setStatus("OPEN");
 
+	        Department department =
+	                departmentRepository
+	                .findByName("IT")
+	                .orElseThrow(() ->
+	                        new RuntimeException(
+	                                "Department Not Found"));
+
+	        complaint.setDepartment(department);
+	        
 	        complaint.setUser(user);
 
 	        complaintRepository.save(complaint);
