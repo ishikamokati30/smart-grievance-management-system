@@ -89,10 +89,13 @@ public class ComplaintService {
 
 	        Department department =
 	                departmentRepository
-	                .findByName("IT")
+	                .findByName(request.getCategory())
 	                .orElseThrow(() ->
 	                        new RuntimeException(
-	                                "Department Not Found"));
+	                        		request.getCategory()
+	                              +  "Department Not Found"));
+	        
+	       
 
 	        complaint.setDepartment(department);
 	        
