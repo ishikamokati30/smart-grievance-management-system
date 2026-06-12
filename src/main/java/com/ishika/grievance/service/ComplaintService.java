@@ -23,6 +23,8 @@ public class ComplaintService {
 	  private UserRepository userRepository;
 	  @Autowired
 	  private DepartmentRepository departmentRepository;
+	  @Autowired
+	  private EmailService emailService;
 	  
 	    public String createComplaint(
 	            ComplaintRequest request) {
@@ -102,6 +104,13 @@ public class ComplaintService {
 	        complaint.setUser(user);
 
 	        complaintRepository.save(complaint);
+	        
+	        emailService.sendEmail(
+	                user.getEmail(),
+	                "Complaint Created",
+	                "Your complaint has been registered.\n\n"
+	                + "Title: "
+	                + complaint.getTitle());
 
 	        return "Complaint Created Successfully";
 	    }

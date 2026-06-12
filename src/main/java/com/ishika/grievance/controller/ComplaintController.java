@@ -15,6 +15,7 @@ import com.ishika.grievance.dto.ComplaintRequest;
 import com.ishika.grievance.dto.UpdateStatusRequest;
 import com.ishika.grievance.entity.Complaint;
 import com.ishika.grievance.service.ComplaintService;
+import com.ishika.grievance.service.EmailService;
 
 @RestController
 @RequestMapping("/api/complaints")
@@ -68,4 +69,5 @@ public class ComplaintController {
     public String adminOnly() {
         return "Welcome Admin";
     }
+
 }
