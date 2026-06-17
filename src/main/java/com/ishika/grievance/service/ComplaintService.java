@@ -1,5 +1,6 @@
 package com.ishika.grievance.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -103,6 +104,7 @@ public class ComplaintService {
 	        
 	        complaint.setUser(user);
 
+	        complaint.setCreatedAt(LocalDateTime.now());
 	        complaintRepository.save(complaint);
 	        
 	        emailService.sendEmail(

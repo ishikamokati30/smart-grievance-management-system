@@ -1,5 +1,7 @@
 package com.ishika.grievance.entity;
 
+import java.time.LocalDateTime;
+
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
 import jakarta.persistence.Entity;
@@ -23,8 +25,19 @@ public class Complaint {
     private String description;
 
     private String category;
+    
+    
+    private LocalDateTime createdAt;
 
-    private String priority;
+    public LocalDateTime getCreatedAt() {
+		return createdAt;
+	}
+
+	public void setCreatedAt(LocalDateTime createdAt) {
+		this.createdAt = createdAt;
+	}
+
+	private String priority;
 
     private String status;
 
