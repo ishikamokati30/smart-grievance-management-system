@@ -31,6 +31,7 @@ public class SecurityConfig {
             throws Exception {
 
         http
+                .cors(org.springframework.security.config.Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth ->
                         auth
@@ -42,6 +43,8 @@ public class SecurityConfig {
                                         "/swagger-ui/**",
                                         "/swagger-ui.html")
                                 .permitAll()
+
+                                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
 
                                 .anyRequest()
                                 .authenticated()
