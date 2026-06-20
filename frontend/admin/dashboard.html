@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — ServiceSync</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<div class="paper-bg"></div>
+<div class="app-shell">
+  <div id="shell-mount"></div>
+  <div class="main-col">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="menu-toggle" id="menu-toggle"></button>
+        <div>
+          <h1 class="page-title" id="greeting">Admin Dashboard</h1>
+          <p class="page-sub">Platform-wide overview — users, complaints, departments.</p>
+        </div>
+      </div>
+      <a href="complaints.html" class="btn btn-primary btn-sm">View all complaints</a>
+    </div>
+
+    <div class="content">
+      <!-- Stats grid -->
+      <div class="grid-stats-lg" id="stats-grid">
+        <div class="stat-card"><div class="skeleton" style="height:68px"></div></div>
+        <div class="stat-card"><div class="skeleton" style="height:68px"></div></div>
+        <div class="stat-card"><div class="skeleton" style="height:68px"></div></div>
+        <div class="stat-card"><div class="skeleton" style="height:68px"></div></div>
+        <div class="stat-card"><div class="skeleton" style="height:68px"></div></div>
+        <div class="stat-card"><div class="skeleton" style="height:68px"></div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:22px" class="dash-bottom">
+        <!-- Recent complaints -->
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Recent complaints</h3>
+            <a href="complaints.html" class="btn btn-ghost btn-sm">View all</a>
+          </div>
+          <div class="ticket-list" id="recent-list">
+            <div class="skeleton" style="height:74px;margin-bottom:10px"></div>
+            <div class="skeleton" style="height:74px;margin-bottom:10px"></div>
+            <div class="skeleton" style="height:74px"></div>
+          </div>
+        </div>
+
+        <!-- Quick stats sidebar -->
+        <div>
+          <div class="panel" style="margin-bottom:18px">
+            <div class="panel-head"><h3>Today's activity</h3></div>
+            <div id="today-stats">
+              <div class="skeleton" style="height:56px;margin-bottom:10px"></div>
+              <div class="skeleton" style="height:56px"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Recent users</h3>
+              <a href="users.html" class="btn btn-ghost btn-sm">View all</a>
+            </div>
+            <div id="recent-users">
+              <div class="skeleton" style="height:44px;margin-bottom:8px"></div>
+              <div class="skeleton" style="height:44px;margin-bottom:8px"></div>
+              <div class="skeleton" style="height:44px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="js/admin-api.js"></script>
+<script src="js/admin-ui.js"></script>
+<script>
+  Auth.requireAdmin();
+  renderAdminShell('dashboard.html');
+  document.getElementById('menu-toggle').innerHTML = ICONS.menu;
+  document.getElementById('greeting').textContent = `Welcome, ${Auth.getName()}`;
+
+  // responsive bottom grid
+  if (window.innerWidth < 760) {
+    document.querySelector('.dash-bottom').style.gridTemplateColumns = '1fr';
+  }
+
+  const ICON_USERS      = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
+  const ICON_TOTAL      = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4h6l1 2h3a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3z"/><path d="M9 11h6M9 15h6"/></svg>';
+  const ICON_OPEN       = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+  const ICON_RESOLVED   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>';
+  const ICON_ESCALATED  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v12M12 2l-4 4M12 2l4 4"/><circle cx="12" cy="19" r="2"/></svg>';
+  const ICON_DEPT       = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1"/></svg>';
+
+  function statCardHtml({ icon, iconClass, label, value, tag, delay }) {
+    return `
+      <div class="stat-card" style="animation-delay:${delay}ms">
+        <div class="stat-icon ${iconClass}">${icon}</div>
+        <div class="stat-label">${label}</div>
+        <div class="stat-value" data-count="${value}">0</div>
+        <div class="stat-tag">${tag}</div>
+      </div>`;
+  }
+
+  async function loadDashboard() {
+    try {
+      const d = await AdminApi.getDashboard();
+      document.getElementById('stats-grid').innerHTML =
+        statCardHtml({ icon: ICON_USERS,    iconClass: 'ic-blue',  label: 'Total users',        value: d.totalUsers,        tag: 'registered',        delay: 0   }) +
+        statCardHtml({ icon: ICON_TOTAL,    iconClass: 'ic-amber', label: 'Total complaints',   value: d.totalComplaints,   tag: 'all time',          delay: 60  }) +
+        statCardHtml({ icon: ICON_OPEN,     iconClass: 'ic-amber', label: 'Open',               value: d.openComplaints,    tag: 'awaiting action',   delay: 120 }) +
+        statCardHtml({ icon: ICON_RESOLVED, iconClass: 'ic-green', label: 'Resolved',           value: d.resolvedComplaints,tag: 'closed out',        delay: 180 }) +
+        statCardHtml({ icon: ICON_ESCALATED,iconClass: 'ic-red',   label: 'Escalated',          value: d.escalatedComplaints,tag: 'needs attention',  delay: 240 }) +
+        statCardHtml({ icon: ICON_DEPT,     iconClass: 'ic-blue',  label: 'Departments',        value: d.totalDepartments,  tag: 'active',            delay: 300 });
+      document.querySelectorAll('[data-count]').forEach(el => animateCount(el, parseInt(el.dataset.count, 10) || 0));
+
+      // Today stats
+      document.getElementById('today-stats').innerHTML = `
+        <div class="stat-mini" style="margin-bottom:10px">
+          <div class="stat-icon ic-amber" style="width:30px;height:30px">${ICON_TOTAL}</div>
+          <div><div class="sm-val">${d.todayComplaints}</div><div class="sm-lbl">Filed today</div></div>
+        </div>
+        <div class="stat-mini">
+          <div class="stat-icon ic-green" style="width:30px;height:30px">${ICON_RESOLVED}</div>
+          <div><div class="sm-val">${d.todayResolved}</div><div class="sm-lbl">Resolved today</div></div>
+        </div>`;
+    } catch (e) {
+      document.getElementById('stats-grid').innerHTML = `<p class="muted" style="grid-column:1/-1">Couldn't load dashboard stats: ${escapeHtml(e.message)}</p>`;
+    }
+  }
+
+  async function loadRecentComplaints() {
+    try {
+      const page = await AdminApi.getComplaints({ page: 0, size: 5 });
+      const items = page.content || [];
+      const list  = document.getElementById('recent-list');
+      if (!items.length) {
+        list.innerHTML = `<div class="empty-state"><div class="stamp-icon">${ICON_TOTAL}</div><h4>No complaints yet</h4><p style="margin:0">Nothing has been filed in the system.</p></div>`;
+        return;
+      }
+      list.innerHTML = items.map((c, i) => `
+        <div class="ticket" data-priority="${c.priority||''}" style="animation-delay:${i*60}ms" onclick="window.location.href='complaint-detail.html?id=${c.id}'">
+          <div>
+            <div class="ticket-id mono">${ticketCode(c.id)}</div>
+            <div class="ticket-title">${escapeHtml(c.title||'Untitled')}</div>
+            <div class="ticket-meta">
+              <span class="pill">${escapeHtml(c.category||'General')}</span>
+              <span>${timeAgo(c.createdAt)}</span>
+            </div>
+          </div>
+          <div class="ticket-side"><span class="${statusBadgeClass(c.status)}">${statusLabel(c.status)}</span></div>
+        </div>`).join('');
+    } catch (e) {
+      document.getElementById('recent-list').innerHTML = `<p class="muted">Couldn't load complaints: ${escapeHtml(e.message)}</p>`;
+    }
+  }
+
+  async function loadRecentUsers() {
+    try {
+      const page = await AdminApi.getUsers({ page: 0, size: 4 });
+      const users = page.content || [];
+      const el    = document.getElementById('recent-users');
+      if (!users.length) { el.innerHTML = `<p class="muted">No users yet.</p>`; return; }
+      el.innerHTML = users.map(u => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--paper-dim)" onclick="window.location.href='users.html'" style="cursor:pointer">
+          <div class="avatar" style="width:30px;height:30px;font-size:12px">${initials(u.name)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(u.name)}</div>
+            <div style="font-size:12px;color:var(--ink-500)">${escapeHtml(u.email)}</div>
+          </div>
+          <span class="role-badge role-${(u.role||'USER').toLowerCase()}">${u.role||'USER'}</span>
+        </div>`).join('');
+    } catch (e) {
+      document.getElementById('recent-users').innerHTML = `<p class="muted">Couldn't load users: ${escapeHtml(e.message)}</p>`;
+    }
+  }
+
+  loadDashboard();
+  loadRecentComplaints();
+  loadRecentUsers();
+</script>
+</body>
+</html>

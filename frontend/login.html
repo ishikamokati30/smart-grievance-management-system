@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log in — ServiceSync</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="paper-bg"></div>
+<div class="auth-shell">
+  <div class="auth-side fade-in">
+    <a href="index.html" style="text-decoration:none">
+      <div class="brand">
+        <div class="brand-mark">S</div>
+        <div class="brand-name">Service<span>Sync</span></div>
+      </div>
+    </a>
+    <div>
+      <span class="eyebrow">Welcome back</span>
+      <h2 class="headline-serif" style="color:#f3efe6">Pick up right where your last ticket left off.</h2>
+      <p class="sub-copy">Every complaint you've filed, every status change, in one queue.</p>
+    </div>
+    <div class="ticket-stub">
+      <div class="stub-row"><span>Ticket</span><b class="mono">SS-00481</b></div>
+      <div class="stub-row"><span>Status</span><b><span class="stamp">In Progress</span></b></div>
+      <div class="stub-row"><span>Updated</span><b>2 hours ago</b></div>
+    </div>
+  </div>
+
+  <div class="auth-form-wrap">
+    <div class="auth-card fade-in">
+      <div class="brand" style="margin-bottom:30px;display:none" id="mobile-brand">
+        <div class="brand-mark">S</div>
+        <div class="brand-name">Service<span>Sync</span></div>
+      </div>
+      <span class="eyebrow">Log in</span>
+      <h2 style="margin-bottom:6px">Access your account</h2>
+      <p class="muted" style="margin-bottom:26px">Enter your credentials to continue.</p>
+
+      <form id="login-form" novalidate>
+        <div class="field">
+          <label for="email">Email address</label>
+          <input class="input" type="email" id="email" placeholder="you@example.com" autocomplete="email" required>
+          <div class="field-error"></div>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input class="input" type="password" id="password" placeholder="••••••••" autocomplete="current-password" required>
+          <div class="field-error"></div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="login-btn">
+          <span class="spinner"></span><span class="btn-label">Log in</span>
+        </button>
+      </form>
+
+      <footer class="auth-foot">Don't have an account? <a href="register.html">Register here</a></footer>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script>
+  Auth.redirectIfLoggedIn();
+
+  const form = document.getElementById('login-form');
+  const emailEl = document.getElementById('email');
+  const passwordEl = document.getElementById('password');
+  const btn = document.getElementById('login-btn');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearFieldError(emailEl);
+    clearFieldError(passwordEl);
+
+    let valid = true;
+    if (!isValidEmail(emailEl.value.trim())) {
+      showFieldError(emailEl, 'Enter a valid email address');
+      valid = false;
+    }
+    if (!passwordEl.value) {
+      showFieldError(passwordEl, 'Password is required');
+      valid = false;
+    }
+    if (!valid) return;
+
+    setButtonLoading(btn, true);
+    try {
+      const token = await Api.login({ email: emailEl.value.trim(), password: passwordEl.value });
+      Auth.saveSession({ token, email: emailEl.value.trim(), name: emailEl.value.trim().split('@')[0] });
+      toast('Welcome back!', 'success');
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 400);
+    } catch (err) {
+      toast(err.message || 'Login failed', 'error');
+      if (/password/i.test(err.message)) showFieldError(passwordEl, 'Incorrect password');
+      if (/not found/i.test(err.message)) showFieldError(emailEl, 'No account with this email');
+    } finally {
+      setButtonLoading(btn, false);
+    }
+  });
+
+  [emailEl, passwordEl].forEach(el => el.addEventListener('input', () => clearFieldError(el)));
+</script>
+</body>
+</html>

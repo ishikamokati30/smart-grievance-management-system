@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Management — ServiceSync Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<div class="paper-bg"></div>
+<div class="app-shell">
+  <div id="shell-mount"></div>
+  <div class="main-col">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="menu-toggle" id="menu-toggle"></button>
+        <div>
+          <h1 class="page-title">User Management</h1>
+          <p class="page-sub">Manage registered users, roles, and access.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="panel">
+        <div class="filter-bar">
+          <input type="text" class="input" id="search-input" placeholder="Search by name or email…">
+          <select class="input" id="role-filter">
+            <option value="">All roles</option>
+            <option value="USER">User</option>
+            <option value="AGENT">Agent</option>
+            <option value="SUPERVISOR">Supervisor</option>
+            <option value="ADMIN">Admin</option>
+          </select>
+        </div>
+        <p class="result-count" id="result-count"></p>
+        <div style="overflow-x:auto">
+          <table class="data-table" id="users-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-body">
+              <tr><td colspan="4"><div class="skeleton" style="height:44px;margin-bottom:8px"></div></td></tr>
+              <tr><td colspan="4"><div class="skeleton" style="height:44px;margin-bottom:8px"></div></td></tr>
+              <tr><td colspan="4"><div class="skeleton" style="height:44px"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Role change modal -->
+<div class="modal-backdrop" id="role-modal">
+  <div class="modal">
+    <h3 style="margin-bottom:6px">Change role</h3>
+    <p class="muted" id="role-modal-sub" style="margin-bottom:18px">Updating role for —</p>
+    <div class="field">
+      <label for="new-role">New role</label>
+      <select class="input" id="new-role">
+        <option value="USER">User</option>
+        <option value="AGENT">Agent</option>
+        <option value="SUPERVISOR">Supervisor</option>
+        <option value="ADMIN">Admin</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px">
+      <button class="btn btn-ghost" id="cancel-role">Cancel</button>
+      <button class="btn btn-primary" id="save-role-btn">
+        <span class="spinner"></span><span class="btn-label">Save role</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="js/admin-api.js"></script>
+<script src="js/admin-ui.js"></script>
+<script>
+  Auth.requireAdmin();
+  renderAdminShell('users.html');
+  document.getElementById('menu-toggle').innerHTML = ICONS.menu;
+
+  let allUsers   = [];
+  let currentPage = 0;
+  const pageSize  = 12;
+  let totalPages  = 0;
+  let roleTarget  = null;
+
+  function roleBadgeHtml(role) {
+    const cls = 'role-' + (role || 'user').toLowerCase();
+    return `<span class="role-badge ${cls}">${escapeHtml(role || 'USER')}</span>`;
+  }
+
+  function renderTable(users) {
+    const tbody = document.getElementById('users-body');
+    document.getElementById('result-count').textContent = `${users.length} user${users.length === 1 ? '' : 's'}`;
+    if (!users.length) {
+      tbody.innerHTML = `<tr><td colspan="4">
+        <div class="empty-state">
+          <div class="stamp-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+          <h4>No users found</h4>
+          <p style="margin:0">Try adjusting your filters.</p>
+        </div>
+      </td></tr>`;
+      return;
+    }
+    tbody.innerHTML = users.map((u, i) => `
+      <tr style="animation-delay:${Math.min(i*30,300)}ms">
+        <td>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="avatar" style="width:30px;height:30px;font-size:12px;flex-shrink:0">${initials(u.name)}</div>
+            <span style="font-weight:600">${escapeHtml(u.name)}</span>
+          </div>
+        </td>
+        <td class="mono" style="font-size:13px">${escapeHtml(u.email)}</td>
+        <td>${roleBadgeHtml(u.role)}</td>
+        <td>
+          <div class="row-actions">
+            <button class="btn btn-ghost btn-sm" onclick="openRoleModal(${u.id},'${escapeHtml(u.name)}','${escapeHtml(u.role||'USER')}')">Change role</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id},'${escapeHtml(u.name)}')">Delete</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  function applyFilters() {
+    const q    = document.getElementById('search-input').value.trim().toLowerCase();
+    const role = document.getElementById('role-filter').value;
+    const filtered = allUsers.filter(u => {
+      const matchQ = !q || (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
+      const matchR = !role || u.role === role;
+      return matchQ && matchR;
+    });
+    renderTable(filtered);
+  }
+
+  ['search-input'].forEach(id => document.getElementById(id).addEventListener('input', applyFilters));
+  ['role-filter'].forEach(id => document.getElementById(id).addEventListener('change', applyFilters));
+
+  function renderPagination() {
+    const el = document.getElementById('pagination');
+    el.innerHTML = `
+      <button class="btn btn-ghost btn-sm" id="prev-page" ${currentPage === 0 ? 'disabled' : ''}>← Prev</button>
+      <span class="page-info">Page ${currentPage + 1} of ${Math.max(totalPages, 1)}</span>
+      <button class="btn btn-ghost btn-sm" id="next-page" ${currentPage >= totalPages - 1 ? 'disabled' : ''}>Next →</button>`;
+    document.getElementById('prev-page').addEventListener('click', () => { if (currentPage > 0) { currentPage--; load(); } });
+    document.getElementById('next-page').addEventListener('click', () => { if (currentPage < totalPages - 1) { currentPage++; load(); } });
+  }
+
+  async function load() {
+    try {
+      const page = await AdminApi.getUsers({ page: currentPage, size: pageSize });
+      allUsers   = page.content || [];
+      totalPages = page.totalPages || 1;
+      applyFilters();
+      renderPagination();
+    } catch (e) {
+      document.getElementById('users-body').innerHTML = `<tr><td colspan="4"><p class="muted">Couldn't load users: ${escapeHtml(e.message)}</p></td></tr>`;
+    }
+  }
+
+  /* ----- Role Modal ----- */
+  const roleModal = document.getElementById('role-modal');
+  document.getElementById('cancel-role').addEventListener('click', () => roleModal.classList.remove('show'));
+  roleModal.addEventListener('click', e => { if (e.target === roleModal) roleModal.classList.remove('show'); });
+
+  function openRoleModal(id, name, currentRole) {
+    roleTarget = id;
+    document.getElementById('role-modal-sub').textContent = `Updating role for ${name}`;
+    document.getElementById('new-role').value = currentRole;
+    roleModal.classList.add('show');
+  }
+
+  document.getElementById('save-role-btn').addEventListener('click', async () => {
+    if (!roleTarget) return;
+    const role = document.getElementById('new-role').value;
+    const btn  = document.getElementById('save-role-btn');
+    setButtonLoading(btn, true);
+    try {
+      await AdminApi.updateUserRole(roleTarget, role);
+      toast('Role updated successfully', 'success');
+      roleModal.classList.remove('show');
+      load();
+    } catch (e) {
+      toast(e.message || 'Could not update role', 'error');
+    } finally {
+      setButtonLoading(btn, false);
+    }
+  });
+
+  async function deleteUser(id, name) {
+    const ok = await confirmAction({
+      title: 'Delete user',
+      message: `This permanently removes ${name} from the platform. This cannot be undone.`,
+      confirmLabel: 'Delete user',
+      danger: true
+    });
+    if (!ok) return;
+    try {
+      await AdminApi.deleteUser(id);
+      toast('User deleted', 'success');
+      load();
+    } catch (e) {
+      toast(e.message || 'Could not delete user', 'error');
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>

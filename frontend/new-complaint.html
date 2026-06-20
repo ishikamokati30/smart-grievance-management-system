@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>File a complaint — ServiceSync</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  .form-wrap{max-width:680px}
+  .priority-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .success-stamp{
+    display:none;text-align:center;padding:40px 20px;
+  }
+  .success-stamp.show{display:block;animation:fadeIn .3s var(--ease)}
+  .check-circle{
+    width:74px;height:74px;border-radius:50%;background:var(--green-100);color:var(--green-600);
+    display:flex;align-items:center;justify-content:center;margin:0 auto 18px;
+    animation:popIn .5s var(--ease);
+  }
+  .check-circle svg{width:34px;height:34px}
+  @keyframes popIn{0%{transform:scale(0)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+</style>
+</head>
+<body>
+<div class="paper-bg"></div>
+<div class="app-shell">
+  <div id="shell-mount"></div>
+  <div class="main-col">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="menu-toggle" id="menu-toggle"></button>
+        <div>
+          <h1 class="page-title">File a complaint</h1>
+          <p class="page-sub">Tell us what happened — we'll route it to the right department.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="panel form-wrap" id="form-panel">
+        <form id="complaint-form" novalidate>
+          <div class="field">
+            <label for="title">Title</label>
+            <input class="input" type="text" id="title" placeholder="e.g. Streetlight not working on Park Road" required>
+            <div class="field-error"></div>
+          </div>
+
+          <div class="field">
+            <label for="description">Description</label>
+            <textarea class="input" id="description" placeholder="Describe the issue in detail — location, when it started, anything relevant." required></textarea>
+            <div class="field-error"></div>
+          </div>
+
+          <div class="field">
+            <label for="category">Category / Department</label>
+            <select class="input" id="category" required>
+              <option value="" disabled selected>Loading departments…</option>
+            </select>
+            <div class="field-error"></div>
+            <p class="help-text">This routes your complaint to the matching department.</p>
+          </div>
+
+          <div class="field">
+            <label>Priority</label>
+            <div class="priority-grid" id="priority-grid">
+              <div class="tag-option" data-value="LOW">Low</div>
+              <div class="tag-option" data-value="MEDIUM">Medium</div>
+              <div class="tag-option" data-value="HIGH">High</div>
+            </div>
+            <div class="field-error" id="priority-error"></div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block" id="submit-btn" style="margin-top:6px">
+            <span class="spinner"></span><span class="btn-label">Submit complaint</span>
+          </button>
+        </form>
+
+        <div class="success-stamp" id="success-stamp">
+          <div class="check-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <h3>Complaint filed</h3>
+          <p class="muted" id="success-detail">It's now in the queue.</p>
+          <div style="display:flex;gap:10px;justify-content:center;margin-top:20px">
+            <a href="complaints.html" class="btn btn-ghost">View my complaints</a>
+            <a href="dashboard.html" class="btn btn-dark">Back to dashboard</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script>
+  Auth.requireAuth();
+  renderShell('new-complaint.html');
+  document.getElementById('menu-toggle').innerHTML = ICONS.menu;
+
+  const titleEl = document.getElementById('title');
+  const descEl = document.getElementById('description');
+  const categoryEl = document.getElementById('category');
+  const priorityGrid = document.getElementById('priority-grid');
+  const priorityError = document.getElementById('priority-error');
+  let selectedPriority = null;
+
+  priorityGrid.addEventListener('click', (e) => {
+    const opt = e.target.closest('.tag-option');
+    if (!opt) return;
+    document.querySelectorAll('#priority-grid .tag-option').forEach(o => o.classList.remove('selected', 'p-high', 'p-low'));
+    opt.classList.add('selected');
+    if (opt.dataset.value === 'HIGH') opt.classList.add('p-high');
+    if (opt.dataset.value === 'LOW') opt.classList.add('p-low');
+    selectedPriority = opt.dataset.value;
+    priorityError.classList.remove('show');
+  });
+
+  // Known department names are looked up by ID 1-8; we probe a generous range and keep the ones that exist.
+  async function loadDepartments() {
+    const found = [];
+    const ids = Array.from({ length: 10 }, (_, i) => i + 1);
+    const results = await Promise.allSettled(ids.map(id => Api.getDepartment(id)));
+    results.forEach(r => {
+      if (r.status === 'fulfilled' && r.value && r.value.name) found.push(r.value);
+    });
+    if (found.length === 0) {
+      categoryEl.innerHTML = `<option value="" disabled selected>No departments configured</option>` +
+        ['General', 'Public Works', 'Utilities', 'Finance', 'IT Support', 'Sanitation'].map(c => `<option value="${c}">${c}</option>`).join('');
+      toast('No departments found yet — an admin may need to add some.', 'info');
+      return;
+    }
+    categoryEl.innerHTML = `<option value="" disabled selected>Choose a department…</option>` +
+      found.map(d => `<option value="${escapeHtml(d.name)}">${escapeHtml(d.name)}</option>`).join('');
+  }
+  loadDepartments();
+
+  document.getElementById('complaint-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    [titleEl, descEl, categoryEl].forEach(clearFieldError);
+    priorityError.classList.remove('show');
+
+    let valid = true;
+    if (!titleEl.value.trim()) { showFieldError(titleEl, 'Give your complaint a short title'); valid = false; }
+    if (!descEl.value.trim()) { showFieldError(descEl, 'Add a description so the department understands the issue'); valid = false; }
+    if (!categoryEl.value) { showFieldError(categoryEl, 'Choose a department'); valid = false; }
+    if (!selectedPriority) { priorityError.textContent = 'Select a priority level'; priorityError.classList.add('show'); valid = false; }
+    if (!valid) return;
+
+    const btn = document.getElementById('submit-btn');
+    setButtonLoading(btn, true);
+    try {
+      // userId is unknown from the JWT (it only carries email + role), so this targets
+      // the generic create endpoint. If your deployment needs per-user attribution,
+      // wire userId through from your own user-lookup endpoint.
+      await Api.createComplaint({
+        title: titleEl.value.trim(),
+        description: descEl.value.trim(),
+        category: categoryEl.value,
+        priority: selectedPriority
+      });
+      document.getElementById('complaint-form').style.display = 'none';
+      document.getElementById('success-stamp').classList.add('show');
+      document.getElementById('success-detail').textContent = `"${titleEl.value.trim()}" has been added to the ${categoryEl.value} queue.`;
+      toast('Complaint submitted successfully', 'success');
+    } catch (err) {
+      toast(err.message || 'Could not submit complaint', 'error');
+    } finally {
+      setButtonLoading(btn, false);
+    }
+  });
+
+  [titleEl, descEl, categoryEl].forEach(el => el.addEventListener('input', () => clearFieldError(el)));
+</script>
+</body>
+</html>

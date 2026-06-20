@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create account — ServiceSync</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="paper-bg"></div>
+<div class="auth-shell">
+  <div class="auth-side fade-in">
+    <a href="index.html" style="text-decoration:none">
+      <div class="brand">
+        <div class="brand-mark">S</div>
+        <div class="brand-name">Service<span>Sync</span></div>
+      </div>
+    </a>
+    <div>
+      <span class="eyebrow">Join ServiceSync</span>
+      <h2 class="headline-serif" style="color:#f3efe6">A clear paper trail for every complaint you raise.</h2>
+      <p class="sub-copy">Registration takes under a minute. No paperwork, just a working queue.</p>
+    </div>
+    <div class="ticket-stub">
+      <div class="stub-row"><span>Account</span><b>Citizen access</b></div>
+      <div class="stub-row"><span>Setup time</span><b>~45 seconds</b></div>
+      <div class="stub-row"><span>Cost</span><b><span class="stamp">Free</span></b></div>
+    </div>
+  </div>
+
+  <div class="auth-form-wrap">
+    <div class="auth-card fade-in">
+      <span class="eyebrow">Register</span>
+      <h2 style="margin-bottom:6px">Create your account</h2>
+      <p class="muted" style="margin-bottom:26px">Start filing and tracking complaints right away.</p>
+
+      <form id="register-form" novalidate>
+        <div class="field">
+          <label for="name">Full name</label>
+          <input class="input" type="text" id="name" placeholder="Ashwin Rao" autocomplete="name" required>
+          <div class="field-error"></div>
+        </div>
+        <div class="field">
+          <label for="email">Email address</label>
+          <input class="input" type="email" id="email" placeholder="you@example.com" autocomplete="email" required>
+          <div class="field-error"></div>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input class="input" type="password" id="password" placeholder="At least 6 characters" autocomplete="new-password" required>
+          <div class="password-strength" id="strength-bar">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="field-error"></div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="register-btn">
+          <span class="spinner"></span><span class="btn-label">Create account</span>
+        </button>
+      </form>
+
+      <footer class="auth-foot">Already registered? <a href="login.html">Log in</a></footer>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script>
+  Auth.redirectIfLoggedIn();
+
+  const form = document.getElementById('register-form');
+  const nameEl = document.getElementById('name');
+  const emailEl = document.getElementById('email');
+  const passwordEl = document.getElementById('password');
+  const btn = document.getElementById('register-btn');
+  const strengthBars = document.querySelectorAll('#strength-bar span');
+
+  passwordEl.addEventListener('input', () => {
+    clearFieldError(passwordEl);
+    const val = passwordEl.value;
+    let score = 0;
+    if (val.length >= 6) score++;
+    if (val.length >= 10) score++;
+    if (/[0-9]/.test(val) && /[a-zA-Z]/.test(val)) score++;
+    const colors = ['#e2ddd1', '#c0432e', '#e8943a', '#1f7a4d'];
+    strengthBars.forEach((bar, i) => {
+      bar.style.background = i < score ? colors[score] : '#e2ddd1';
+    });
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    [nameEl, emailEl, passwordEl].forEach(clearFieldError);
+
+    let valid = true;
+    if (!nameEl.value.trim()) {
+      showFieldError(nameEl, 'Name cannot be empty');
+      valid = false;
+    }
+    if (!isValidEmail(emailEl.value.trim())) {
+      showFieldError(emailEl, 'Enter a valid email address');
+      valid = false;
+    }
+    if (passwordEl.value.length < 6) {
+      showFieldError(passwordEl, 'Password must be at least 6 characters');
+      valid = false;
+    }
+    if (!valid) return;
+
+    setButtonLoading(btn, true);
+    try {
+      await Api.register({ name: nameEl.value.trim(), email: emailEl.value.trim(), password: passwordEl.value });
+      toast('Account created. Logging you in…', 'success');
+      const token = await Api.login({ email: emailEl.value.trim(), password: passwordEl.value });
+      Auth.saveSession({ token, email: emailEl.value.trim(), name: nameEl.value.trim() });
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 500);
+    } catch (err) {
+      toast(err.message || 'Registration failed', 'error');
+      if (/email/i.test(err.message)) showFieldError(emailEl, err.message);
+    } finally {
+      setButtonLoading(btn, false);
+    }
+  });
+
+  [nameEl, emailEl].forEach(el => el.addEventListener('input', () => clearFieldError(el)));
+</script>
+</body>
+</html>

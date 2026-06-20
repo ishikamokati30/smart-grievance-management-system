@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Profile — ServiceSync</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<div class="paper-bg"></div>
+<div class="app-shell">
+  <div id="shell-mount"></div>
+  <div class="main-col">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="menu-toggle" id="menu-toggle"></button>
+        <div>
+          <h1 class="page-title">Admin Profile</h1>
+          <p class="page-sub">Your account details and session management.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="profile-grid">
+        <!-- Avatar card -->
+        <div class="panel" style="text-align:center">
+          <div class="avatar-lg" id="p-avatar">?</div>
+          <h3 id="p-name" style="margin-bottom:2px">—</h3>
+          <p class="muted" style="font-size:13px;margin-bottom:12px" id="p-email">—</p>
+          <span class="role-badge role-admin" id="p-role">ADMIN</span>
+          <div class="divider"></div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:12.5px;color:var(--ink-500)">Admin Console access</div>
+            <span class="badge badge-resolved" style="justify-content:center">Active session</span>
+          </div>
+        </div>
+
+        <!-- Details -->
+        <div>
+          <div class="panel">
+            <div class="panel-head"><h3>Account details</h3></div>
+            <table class="data-table">
+              <tbody>
+                <tr><td class="muted">Display name</td><td id="t-name">—</td></tr>
+                <tr><td class="muted">Email</td><td id="t-email">—</td></tr>
+                <tr><td class="muted">Role</td><td><span class="role-badge role-admin">ADMIN</span></td></tr>
+                <tr><td class="muted">Session</td><td><span class="badge badge-resolved">Active</span></td></tr>
+                <tr><td class="muted">Console</td><td><span class="mono" style="font-size:13px">Admin Panel v1</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h3>Quick actions</h3></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <a href="users.html" class="btn btn-ghost btn-sm">Manage users</a>
+              <a href="departments.html" class="btn btn-ghost btn-sm">Manage departments</a>
+              <a href="complaints.html" class="btn btn-ghost btn-sm">View complaints</a>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h3>Session</h3></div>
+            <p class="muted" style="margin-bottom:16px">Signing out clears your session token from this browser. You will be redirected to the login page.</p>
+            <button class="btn btn-danger" id="logout-action">Sign out of ServiceSync</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="js/admin-api.js"></script>
+<script src="js/admin-ui.js"></script>
+<script>
+  Auth.requireAdmin();
+  renderAdminShell('profile.html');
+  document.getElementById('menu-toggle').innerHTML = ICONS.menu;
+
+  const name  = Auth.getName();
+  const email = Auth.getEmail();
+  const role  = Auth.getRole() || 'ADMIN';
+
+  document.getElementById('p-avatar').textContent = initials(name);
+  document.getElementById('p-name').textContent   = name;
+  document.getElementById('p-email').textContent  = email;
+  document.getElementById('p-role').textContent   = role;
+  document.getElementById('t-name').textContent   = name;
+  document.getElementById('t-email').textContent  = email;
+
+  document.getElementById('logout-action').addEventListener('click', async () => {
+    const ok = await confirmAction({
+      title: 'Sign out',
+      message: 'You will need to log in again to access the Admin Console.',
+      confirmLabel: 'Sign out',
+      danger: true
+    });
+    if (ok) Auth.logout();
+  });
+</script>
+</body>
+</html>

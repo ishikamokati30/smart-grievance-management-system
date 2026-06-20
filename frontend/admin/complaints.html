@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Complaints — ServiceSync Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<div class="paper-bg"></div>
+<div class="app-shell">
+  <div id="shell-mount"></div>
+  <div class="main-col">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="menu-toggle" id="menu-toggle"></button>
+        <div>
+          <h1 class="page-title">Complaints</h1>
+          <p class="page-sub">All complaints across the platform — filter, review, and act.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- Mini stats row -->
+      <div class="stat-mini-row" id="mini-stats">
+        <div class="skeleton" style="height:52px;width:160px;border-radius:10px"></div>
+        <div class="skeleton" style="height:52px;width:160px;border-radius:10px"></div>
+        <div class="skeleton" style="height:52px;width:160px;border-radius:10px"></div>
+        <div class="skeleton" style="height:52px;width:160px;border-radius:10px"></div>
+      </div>
+
+      <div class="panel">
+        <div class="filter-bar">
+          <input type="text" class="input" id="search-input" placeholder="Search by title or ticket ID…">
+          <select class="input" id="status-filter">
+            <option value="">All statuses</option>
+            <option value="OPEN">Open</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="REJECTED">Rejected</option>
+            <option value="ESCALATED">Escalated</option>
+          </select>
+          <select class="input" id="priority-filter">
+            <option value="">All priorities</option>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+          </select>
+        </div>
+        <p class="result-count" id="result-count"></p>
+        <div class="ticket-list" id="ticket-list">
+          <div class="skeleton" style="height:74px;margin-bottom:10px"></div>
+          <div class="skeleton" style="height:74px;margin-bottom:10px"></div>
+          <div class="skeleton" style="height:74px"></div>
+        </div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="js/admin-api.js"></script>
+<script src="js/admin-ui.js"></script>
+<script>
+  Auth.requireAdmin();
+  renderAdminShell('complaints.html');
+  document.getElementById('menu-toggle').innerHTML = ICONS.menu;
+
+  let currentPage = 0;
+  const pageSize  = 10;
+  let totalPages  = 1;
+  let lastContent = [];
+
+  async function loadStats() {
+    try {
+      const s = await AdminApi.getComplaintStats();
+      const ICON_TOTAL    = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4h6l1 2h3a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3z"/></svg>';
+      const ICON_OPEN     = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+      const ICON_DONE     = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>';
+      const ICON_HIGH     = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>';
+      document.getElementById('mini-stats').innerHTML = `
+        <div class="stat-mini"><div class="stat-icon ic-blue" style="width:30px;height:30px">${ICON_TOTAL}</div><div><div class="sm-val">${s.total||0}</div><div class="sm-lbl">Total</div></div></div>
+        <div class="stat-mini"><div class="stat-icon ic-amber" style="width:30px;height:30px">${ICON_OPEN}</div><div><div class="sm-val">${s.open||0}</div><div class="sm-lbl">Open</div></div></div>
+        <div class="stat-mini"><div class="stat-icon ic-green" style="width:30px;height:30px">${ICON_DONE}</div><div><div class="sm-val">${s.resolved||0}</div><div class="sm-lbl">Resolved</div></div></div>
+        <div class="stat-mini"><div class="stat-icon ic-red" style="width:30px;height:30px">${ICON_HIGH}</div><div><div class="sm-val">${s.highPriority||0}</div><div class="sm-lbl">High priority</div></div></div>`;
+    } catch { /* silently skip mini stats */ }
+  }
+
+  function renderList(items) {
+    const container = document.getElementById('ticket-list');
+    const count     = document.getElementById('result-count');
+    count.textContent = `${items.length} complaint${items.length === 1 ? '' : 's'} on this page`;
+    if (!items.length) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="stamp-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+          <h4>No matching complaints</h4>
+          <p style="margin:0">Try adjusting your filters.</p>
+        </div>`;
+      return;
+    }
+    container.innerHTML = items.map((c, i) => `
+      <div class="ticket" data-priority="${c.priority||''}" style="animation-delay:${Math.min(i*50,400)}ms" onclick="window.location.href='complaint-detail.html?id=${c.id}'">
+        <div>
+          <div class="ticket-id mono">${ticketCode(c.id)}</div>
+          <div class="ticket-title">${escapeHtml(c.title||'Untitled complaint')}</div>
+          <div class="ticket-desc">${escapeHtml(c.description||'')}</div>
+          <div class="ticket-meta">
+            <span class="pill">${escapeHtml(c.category||'General')}</span>
+            <span>${timeAgo(c.createdAt)}</span>
+            ${c.departmentName ? `<span class="pill">${escapeHtml(c.departmentName)}</span>` : ''}
+          </div>
+        </div>
+        <div class="ticket-side">
+          <span class="${statusBadgeClass(c.status)}">${statusLabel(c.status)}</span>
+          ${c.priority ? `<span class="pill">${escapeHtml(c.priority)} priority</span>` : ''}
+        </div>
+      </div>`).join('');
+  }
+
+  function renderPagination() {
+    const el = document.getElementById('pagination');
+    el.innerHTML = `
+      <button class="btn btn-ghost btn-sm" id="prev-page" ${currentPage===0?'disabled':''}>← Prev</button>
+      <span class="page-info">Page ${currentPage+1} of ${Math.max(totalPages,1)}</span>
+      <button class="btn btn-ghost btn-sm" id="next-page" ${currentPage>=totalPages-1?'disabled':''}>Next →</button>`;
+    document.getElementById('prev-page').addEventListener('click', () => { if (currentPage > 0) { currentPage--; load(); } });
+    document.getElementById('next-page').addEventListener('click', () => { if (currentPage < totalPages-1) { currentPage++; load(); } });
+  }
+
+  function buildParams() {
+    const params = { page: currentPage, size: pageSize };
+    const status   = document.getElementById('status-filter').value;
+    const priority = document.getElementById('priority-filter').value;
+    if (status)   params.status   = status;
+    if (priority) params.priority = priority;
+    return params;
+  }
+
+  async function load() {
+    try {
+      const page = await AdminApi.getComplaints(buildParams());
+      let items  = page.content || [];
+      totalPages = page.totalPages || 1;
+
+      // client-side title search
+      const q = document.getElementById('search-input').value.trim().toLowerCase();
+      if (q) items = items.filter(c => (c.title||'').toLowerCase().includes(q) || ticketCode(c.id).toLowerCase().includes(q));
+
+      lastContent = items;
+      renderList(items);
+      renderPagination();
+    } catch (e) {
+      document.getElementById('ticket-list').innerHTML = `<p class="muted">Couldn't load complaints: ${escapeHtml(e.message)}</p>`;
+    }
+  }
+
+  document.getElementById('search-input').addEventListener('input', () => { currentPage = 0; load(); });
+  ['status-filter','priority-filter'].forEach(id => document.getElementById(id).addEventListener('change', () => { currentPage = 0; load(); }));
+
+  loadStats();
+  load();
+</script>
+</body>
+</html>

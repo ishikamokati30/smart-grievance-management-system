@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ServiceSync — Grievance Management, Resolved</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  .land-nav{display:flex;align-items:center;justify-content:space-between;padding:22px 6vw;max-width:1280px;margin:0 auto}
+  .land-nav .actions{display:flex;gap:10px}
+  .hero{max-width:1280px;margin:0 auto;padding:48px 6vw 30px;display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center}
+  @media (max-width:880px){.hero{grid-template-columns:1fr;padding-top:18px}}
+  .hero h1{font-size:clamp(34px,5vw,52px);line-height:1.08;max-width:560px}
+  .hero h1 em{font-style:normal;color:var(--amber-600);position:relative}
+  .hero-copy{color:var(--ink-500);font-size:16.5px;max-width:480px;margin-bottom:26px}
+  .hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:30px}
+  .trust-row{display:flex;gap:22px;color:var(--ink-500);font-size:13px;flex-wrap:wrap}
+  .trust-row b{color:var(--ink-900);font-family:'Fraunces',serif;font-size:18px;display:block}
+
+  .case-board{position:relative;perspective:1200px}
+  .float-card{
+    background:var(--card);border-radius:14px;box-shadow:var(--shadow-pop);
+    padding:16px 18px;position:relative;border:1px solid rgba(21,32,58,.06);
+    animation:floatY 6s ease-in-out infinite;
+  }
+  .float-card.c2{margin-top:-26px;margin-left:18%;animation-delay:.6s;width:78%}
+  .float-card.c3{margin-top:-22px;margin-left:6%;animation-delay:1.2s;width:70%}
+  @keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+
+  .section{max-width:1280px;margin:0 auto;padding:64px 6vw}
+  .section-head{max-width:560px;margin-bottom:36px}
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:22px}
+  .step{background:var(--card);border-radius:14px;padding:22px;border:1px solid rgba(21,32,58,.06);box-shadow:var(--shadow-card)}
+  .step .step-no{font-family:'JetBrains Mono',monospace;color:var(--amber-600);font-size:12.5px;margin-bottom:10px;display:block}
+
+  .roles-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+  .role-card{
+    border-radius:14px;padding:22px;border:1px solid rgba(21,32,58,.07);background:var(--card);
+    transition:transform .25s var(--ease), box-shadow .25s var(--ease);
+  }
+  .role-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-pop)}
+
+  .cta-band{
+    background:linear-gradient(165deg,var(--ink-900),var(--ink-700));border-radius:22px;
+    color:#f3efe6;padding:48px 6vw;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;
+    margin:0 6vw 64px;
+  }
+  .land-foot{max-width:1280px;margin:0 auto;padding:24px 6vw 40px;color:var(--ink-300);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+</style>
+</head>
+<body>
+<div class="paper-bg"></div>
+
+<nav class="land-nav fade-in">
+  <div class="brand">
+    <div class="brand-mark">S</div>
+    <div class="brand-name">Service<span>Sync</span></div>
+  </div>
+  <div class="actions">
+    <a class="btn btn-ghost" href="login.html">Log in</a>
+    <a class="btn btn-primary" href="register.html">Get started</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="fade-in">
+    <span class="eyebrow">Grievance management, taken seriously</span>
+    <h1>Every complaint, <em>tracked</em> from first word to final resolution.</h1>
+    <p class="hero-copy">ServiceSync gives citizens a clear way to raise issues, and gives departments a single queue to act on them — with status, priority, and timestamps that never get lost in an inbox.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="register.html">Create your account</a>
+      <a class="btn btn-ghost" href="login.html">I already have one</a>
+    </div>
+    <div class="trust-row">
+      <div><b id="stat-total">—</b>complaints logged</div>
+      <div><b id="stat-resolved">—</b>resolved to date</div>
+      <div><b>24/7</b>filing, any device</div>
+    </div>
+  </div>
+
+  <div class="case-board fade-in">
+    <div class="float-card c1">
+      <div class="ticket-id mono">SS-00482</div>
+      <div class="ticket-title">Streetlight outage on 5th Block</div>
+      <div class="ticket-meta">
+        <span class="badge badge-open">Open</span>
+        <span class="pill">Public Works</span>
+      </div>
+    </div>
+    <div class="float-card c2">
+      <div class="ticket-id mono">SS-00481</div>
+      <div class="ticket-title">Delayed refund — utility billing</div>
+      <div class="ticket-meta">
+        <span class="badge badge-in_progress">In Progress</span>
+        <span class="pill">Finance</span>
+      </div>
+    </div>
+    <div class="float-card c3">
+      <div class="ticket-id mono">SS-00479</div>
+      <div class="ticket-title">Pothole repair request</div>
+      <div class="ticket-meta">
+        <span class="badge badge-resolved">Resolved</span>
+        <span class="pill">Roads</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <span class="eyebrow">How it works</span>
+    <h2>From complaint to closure in three steps</h2>
+  </div>
+  <div class="steps">
+    <div class="step fade-in">
+      <span class="step-no">01 / FILE</span>
+      <h4>Submit your complaint</h4>
+      <p class="muted" style="margin:0">Describe the issue, pick a category and priority. It's routed to the right department automatically.</p>
+    </div>
+    <div class="step fade-in" style="animation-delay:.08s">
+      <span class="step-no">02 / TRACK</span>
+      <h4>Watch it move</h4>
+      <p class="muted" style="margin:0">Every status change — open, in progress, resolved — is logged with a timestamp you can see.</p>
+    </div>
+    <div class="step fade-in" style="animation-delay:.16s">
+      <span class="step-no">03 / RESOLVE</span>
+      <h4>Get closure</h4>
+      <p class="muted" style="margin:0">Agents and supervisors close the loop, and you're notified the moment it's done.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <span class="eyebrow">Built for every seat at the table</span>
+    <h2>One system, four roles</h2>
+  </div>
+  <div class="roles-grid">
+    <div class="role-card"><div class="stamp" style="margin-bottom:10px">USER</div><h4 style="font-size:16px">Citizens</h4><p class="muted" style="font-size:13.5px;margin:0">File complaints and track them to resolution.</p></div>
+    <div class="role-card"><div class="stamp" style="margin-bottom:10px">AGENT</div><h4 style="font-size:16px">Agents</h4><p class="muted" style="font-size:13.5px;margin:0">Pick up tickets and move them forward.</p></div>
+    <div class="role-card"><div class="stamp" style="margin-bottom:10px">SUPERVISOR</div><h4 style="font-size:16px">Supervisors</h4><p class="muted" style="font-size:13.5px;margin:0">Oversee department load and SLA health.</p></div>
+    <div class="role-card"><div class="stamp" style="margin-bottom:10px">ADMIN</div><h4 style="font-size:16px">Admins</h4><p class="muted" style="font-size:13.5px;margin:0">Manage departments and the full system.</p></div>
+  </div>
+</section>
+
+<div class="cta-band">
+  <div>
+    <h2 style="color:#f3efe6;margin-bottom:6px">Ready to file your first complaint?</h2>
+    <p style="color:rgba(243,239,230,.7);margin:0">It takes less than a minute to register.</p>
+  </div>
+  <a class="btn btn-primary" href="register.html">Get started — it's free</a>
+</div>
+
+<footer class="land-foot">
+  <span>© 2026 ServiceSync</span>
+  <span>Grievance Management System</span>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script>
+  (async () => {
+    try {
+      const stats = await Api.getDashboardStats();
+      animateCount(document.getElementById('stat-total'), stats.totalComplaints || 0);
+      animateCount(document.getElementById('stat-resolved'), stats.resolvedComplaints || 0);
+    } catch (e) {
+      document.getElementById('stat-total').textContent = '—';
+      document.getElementById('stat-resolved').textContent = '—';
+    }
+  })();
+</script>
+</body>
+</html>

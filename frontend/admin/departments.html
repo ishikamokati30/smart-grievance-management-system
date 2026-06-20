@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Departments — ServiceSync Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<div class="paper-bg"></div>
+<div class="app-shell">
+  <div id="shell-mount"></div>
+  <div class="main-col">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="menu-toggle" id="menu-toggle"></button>
+        <div>
+          <h1 class="page-title">Departments</h1>
+          <p class="page-sub">Create, manage, and analyse departments.</p>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" id="add-dept-btn">+ Add department</button>
+    </div>
+
+    <div class="content">
+      <!-- Analytics panel -->
+      <div class="panel" style="margin-bottom:22px">
+        <div class="panel-head"><h3>Department analytics</h3></div>
+        <div style="overflow-x:auto">
+          <table class="data-table" id="analytics-table">
+            <thead>
+              <tr>
+                <th>Department</th>
+                <th>Total</th>
+                <th>Resolved</th>
+                <th>Pending</th>
+                <th>Resolution rate</th>
+              </tr>
+            </thead>
+            <tbody id="analytics-body">
+              <tr><td colspan="5"><div class="skeleton" style="height:40px"></div></td></tr>
+              <tr><td colspan="5"><div class="skeleton" style="height:40px"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Department cards -->
+      <div class="panel">
+        <div class="panel-head"><h3>All departments</h3></div>
+        <div class="dept-grid" id="dept-grid">
+          <div class="skeleton" style="height:96px"></div>
+          <div class="skeleton" style="height:96px"></div>
+          <div class="skeleton" style="height:96px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit modal -->
+<div class="modal-backdrop" id="dept-modal">
+  <div class="modal">
+    <h3 id="modal-title" style="margin-bottom:16px">Add department</h3>
+    <form id="dept-form">
+      <input type="hidden" id="edit-id" value="">
+      <div class="field">
+        <label for="dept-name">Department name</label>
+        <input class="input" type="text" id="dept-name" placeholder="e.g. Public Works" required>
+        <div class="field-error"></div>
+      </div>
+      <div class="field">
+        <label for="dept-email">Contact email</label>
+        <input class="input" type="email" id="dept-email" placeholder="dept@city.gov" required>
+        <div class="field-error"></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px">
+        <button type="button" class="btn btn-ghost" id="cancel-dept">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="save-dept-btn">
+          <span class="spinner"></span><span class="btn-label">Save department</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="js/admin-api.js"></script>
+<script src="js/admin-ui.js"></script>
+<script>
+  Auth.requireAdmin();
+  renderAdminShell('departments.html');
+  document.getElementById('menu-toggle').innerHTML = ICONS.menu;
+
+  const DEPT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1"/></svg>';
+
+  let depts = [];
+
+  function renderDeptCards(list) {
+    const grid = document.getElementById('dept-grid');
+    if (!list.length) {
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1">
+          <div class="stamp-icon">${DEPT_ICON}</div>
+          <h4>No departments yet</h4>
+          <p style="margin:0">Add the first one using the button above.</p>
+        </div>`;
+      return;
+    }
+    grid.innerHTML = list.map((d, i) => `
+      <div class="dept-card-admin" style="animation-delay:${i*60}ms">
+        <div class="dept-icon">${DEPT_ICON}</div>
+        <h4 style="font-size:15px;margin-bottom:4px">${escapeHtml(d.name)}</h4>
+        <p class="muted" style="font-size:12.5px;margin:0">${escapeHtml(d.email||'No contact email')}</p>
+        <p class="help-text" style="margin-top:6px;margin-bottom:0">ID ${d.id}</p>
+        <div class="dept-foot">
+          <button class="btn btn-ghost btn-sm" onclick="openEditModal(${d.id},'${escapeHtml(d.name)}','${escapeHtml(d.email||'')}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteDept(${d.id},'${escapeHtml(d.name)}')">Delete</button>
+        </div>
+      </div>`).join('');
+  }
+
+  function renderAnalytics(list) {
+    const tbody = document.getElementById('analytics-body');
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="5"><p class="muted">No analytics data yet.</p></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = list.map(a => {
+      const rate = a.totalComplaints > 0 ? Math.round(a.resolvedComplaints / a.totalComplaints * 100) : 0;
+      return `
+        <tr>
+          <td style="font-weight:600">${escapeHtml(a.departmentName||'—')}</td>
+          <td>${a.totalComplaints||0}</td>
+          <td><span style="color:var(--green-600);font-weight:600">${a.resolvedComplaints||0}</span></td>
+          <td><span style="color:var(--amber-600);font-weight:600">${a.pendingComplaints||0}</span></td>
+          <td>
+            <div class="analytics-bar-label"><span></span><b>${rate}%</b></div>
+            <div class="progress-track"><div class="progress-fill" style="width:${rate}%"></div></div>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  async function loadAll() {
+    try {
+      const [list, analytics] = await Promise.all([
+        AdminApi.getAllDepartments(),
+        AdminApi.getDepartmentAnalytics()
+      ]);
+      depts = list;
+      renderDeptCards(list);
+      renderAnalytics(analytics);
+    } catch (e) {
+      document.getElementById('dept-grid').innerHTML = `<p class="muted">Couldn't load departments: ${escapeHtml(e.message)}</p>`;
+    }
+  }
+
+  /* ----- Modal ----- */
+  const modal   = document.getElementById('dept-modal');
+  const form    = document.getElementById('dept-form');
+  const nameEl  = document.getElementById('dept-name');
+  const emailEl = document.getElementById('dept-email');
+  const editId  = document.getElementById('edit-id');
+
+  function openAddModal() {
+    document.getElementById('modal-title').textContent = 'Add department';
+    editId.value  = '';
+    form.reset();
+    [nameEl, emailEl].forEach(clearFieldError);
+    modal.classList.add('show');
+  }
+
+  function openEditModal(id, name, email) {
+    document.getElementById('modal-title').textContent = 'Edit department';
+    editId.value     = id;
+    nameEl.value     = name;
+    emailEl.value    = email;
+    [nameEl, emailEl].forEach(clearFieldError);
+    modal.classList.add('show');
+  }
+
+  document.getElementById('add-dept-btn').addEventListener('click', openAddModal);
+  document.getElementById('cancel-dept').addEventListener('click', () => modal.classList.remove('show'));
+  modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    [nameEl, emailEl].forEach(clearFieldError);
+    let valid = true;
+    if (!nameEl.value.trim())              { showFieldError(nameEl,  'Name is required');         valid = false; }
+    if (!isValidEmail(emailEl.value.trim())) { showFieldError(emailEl, 'Enter a valid email');     valid = false; }
+    if (!valid) return;
+
+    const btn = document.getElementById('save-dept-btn');
+    setButtonLoading(btn, true);
+    try {
+      const payload = { name: nameEl.value.trim(), email: emailEl.value.trim() };
+      if (editId.value) {
+        await AdminApi.updateDepartment(editId.value, payload);
+        toast('Department updated', 'success');
+      } else {
+        await AdminApi.createDepartment(payload);
+        toast('Department created', 'success');
+      }
+      modal.classList.remove('show');
+      form.reset();
+      loadAll();
+    } catch (err) {
+      toast(err.message || 'Could not save department', 'error');
+    } finally {
+      setButtonLoading(btn, false);
+    }
+  });
+
+  async function deleteDept(id, name) {
+    const ok = await confirmAction({
+      title: 'Delete department',
+      message: `This permanently removes "${name}" and cannot be undone.`,
+      confirmLabel: 'Delete',
+      danger: true
+    });
+    if (!ok) return;
+    try {
+      await AdminApi.deleteDepartment(id);
+      toast('Department deleted', 'success');
+      loadAll();
+    } catch (e) {
+      toast(e.message || 'Could not delete department', 'error');
+    }
+  }
+
+  loadAll();
+</script>
+</body>
+</html>

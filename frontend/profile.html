@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile — ServiceSync</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  .profile-grid{display:grid;grid-template-columns:280px 1fr;gap:22px}
+  @media (max-width:760px){.profile-grid{grid-template-columns:1fr}}
+  .avatar-lg{
+    width:84px;height:84px;border-radius:50%;background:linear-gradient(145deg,var(--amber-500),var(--amber-600));
+    color:#221404;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;
+    font-size:30px;font-weight:700;margin:0 auto 14px;
+  }
+</style>
+</head>
+<body>
+<div class="paper-bg"></div>
+<div class="app-shell">
+  <div id="shell-mount"></div>
+  <div class="main-col">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="menu-toggle" id="menu-toggle"></button>
+        <div>
+          <h1 class="page-title">Profile</h1>
+          <p class="page-sub">Your account details.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="profile-grid">
+        <div class="panel" style="text-align:center">
+          <div class="avatar-lg" id="p-avatar">?</div>
+          <h3 id="p-name" style="margin-bottom:2px">—</h3>
+          <p class="muted" style="font-size:13px;margin-bottom:10px" id="p-email">—</p>
+          <span class="stamp" id="p-role">USER</span>
+        </div>
+
+        <div>
+          <div class="panel">
+            <div class="panel-head"><h3>Account</h3></div>
+            <table class="data-table">
+              <tbody>
+                <tr><td class="muted">Display name</td><td id="t-name">—</td></tr>
+                <tr><td class="muted">Email</td><td id="t-email">—</td></tr>
+                <tr><td class="muted">Role</td><td id="t-role">—</td></tr>
+                <tr><td class="muted">Session</td><td><span class="badge badge-resolved">Active</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h3>Session</h3></div>
+            <p class="muted" style="margin-bottom:16px">Signing out clears your session token from this browser.</p>
+            <button class="btn btn-danger" id="logout-action">Sign out of ServiceSync</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script>
+  Auth.requireAuth();
+  renderShell('profile.html');
+  document.getElementById('menu-toggle').innerHTML = ICONS.menu;
+
+  const name = Auth.getName();
+  const email = Auth.getEmail();
+  const role = Auth.getRole() || 'USER';
+
+  document.getElementById('p-avatar').textContent = initials(name);
+  document.getElementById('p-name').textContent = name;
+  document.getElementById('p-email').textContent = email;
+  document.getElementById('p-role').textContent = role;
+
+  document.getElementById('t-name').textContent = name;
+  document.getElementById('t-email').textContent = email;
+  document.getElementById('t-role').textContent = role;
+
+  document.getElementById('logout-action').addEventListener('click', async () => {
+    const ok = await confirmAction({ title: 'Sign out', message: 'You will need to log in again to access ServiceSync.', confirmLabel: 'Sign out', danger: true });
+    if (ok) Auth.logout();
+  });
+</script>
+</body>
+</html>
