@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Complaints — ServiceSync</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  .filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+  .filter-bar input.input{max-width:260px}
+  .filter-bar select.input{max-width:170px;width:auto}
+  .result-count{font-size:13px;color:var(--ink-500);margin-bottom:14px}
+</style>
+</head>
+<body>
+<div class="paper-bg"></div>
+<div class="app-shell">
+  <div id="shell-mount"></div>
+  <div class="main-col">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="menu-toggle" id="menu-toggle"></button>
+        <div>
+          <h1 class="page-title">Complaints</h1>
+          <p class="page-sub" id="role-sub">All complaints in the system.</p>
+        </div>
+      </div>
+      <a href="new-complaint.html" class="btn btn-primary btn-sm" id="new-complaint-cta">+ New complaint</a>
+    </div>
+
+    <div class="content">
+      <div class="panel">
+        <div class="filter-bar">
+          <input type="text" class="input" id="search-input" placeholder="Search by title or ticket ID…">
+          <select class="input" id="status-filter">
+            <option value="">All statuses</option>
+            <option value="OPEN">Open</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+          <select class="input" id="priority-filter">
+            <option value="">All priorities</option>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+          </select>
+        </div>
+        <p class="result-count" id="result-count"></p>
+        <div class="ticket-list" id="ticket-list">
+          <div class="skeleton" style="height:74px;margin-bottom:10px"></div>
+          <div class="skeleton" style="height:74px;margin-bottom:10px"></div>
+          <div class="skeleton" style="height:74px;margin-bottom:10px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script>
+  Auth.requireAuth();
+  renderShell('complaints.html');
+  document.getElementById('menu-toggle').innerHTML = ICONS.menu;
+
+  const role = Auth.getRole() || 'USER';
+  if (role !== 'USER') document.getElementById('new-complaint-cta').remove();
+  document.getElementById('role-sub').textContent = role === 'USER'
+    ? 'Complaints you have filed.'
+    : 'All complaints across departments.';
+
+  let allComplaints = [];
+
+  function render(list) {
+    const container = document.getElementById('ticket-list');
+    document.getElementById('result-count').textContent = `${list.length} complaint${list.length === 1 ? '' : 's'}`;
+    if (list.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="stamp-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+          <h4>No matching complaints</h4>
+          <p style="margin:0">Try adjusting your filters or search term.</p>
+        </div>`;
+      return;
+    }
+    container.innerHTML = list.map((c, i) => `
+      <div class="ticket" data-priority="${c.priority || ''}" style="animation-delay:${Math.min(i * 50, 400)}ms" onclick="window.location.href='complaint-detail.html?id=${c.id}'">
+        <div>
+          <div class="ticket-id mono">${ticketCode(c.id)}</div>
+          <div class="ticket-title">${escapeHtml(c.title || 'Untitled complaint')}</div>
+          <div class="ticket-desc">${escapeHtml(c.description || '')}</div>
+          <div class="ticket-meta">
+            <span class="pill">${escapeHtml(c.category || 'General')}</span>
+            <span>${timeAgo(c.createdAt)}</span>
+          </div>
+        </div>
+        <div class="ticket-side">
+          <span class="${statusBadgeClass(c.status)}">${statusLabel(c.status)}</span>
+          ${c.priority ? `<span class="pill">${escapeHtml(c.priority)} priority</span>` : ''}
+        </div>
+      </div>`).join('');
+  }
+
+  function applyFilters() {
+    const q = document.getElementById('search-input').value.trim().toLowerCase();
+    const status = document.getElementById('status-filter').value;
+    const priority = document.getElementById('priority-filter').value;
+
+    const filtered = allComplaints.filter(c => {
+      const matchesQ = !q || (c.title || '').toLowerCase().includes(q) || ticketCode(c.id).toLowerCase().includes(q);
+      const matchesStatus = !status || (c.status || 'OPEN') === status;
+      const matchesPriority = !priority || c.priority === priority;
+      return matchesQ && matchesStatus && matchesPriority;
+    });
+    render(filtered);
+  }
+
+  ['search-input'].forEach(id => document.getElementById(id).addEventListener('input', applyFilters));
+  ['status-filter', 'priority-filter'].forEach(id => document.getElementById(id).addEventListener('change', applyFilters));
+
+  async function load() {
+    try {
+      const data = await Api.getAllComplaints();
+      allComplaints = [...data].sort((a, b) => (b.id || 0) - (a.id || 0));
+      applyFilters();
+    } catch (e) {
+      document.getElementById('ticket-list').innerHTML = `<p class="muted">Couldn't load complaints: ${escapeHtml(e.message)}</p>`;
+    }
+  }
+  load();
+</script>
+</body>
+</html>

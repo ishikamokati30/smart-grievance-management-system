@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — ServiceSync</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="paper-bg"></div>
+<div class="app-shell">
+  <div id="shell-mount"></div>
+  <div class="main-col">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="menu-toggle" id="menu-toggle"></button>
+        <div>
+          <h1 class="page-title" id="greeting">Dashboard</h1>
+          <p class="page-sub">Here's what's happening across ServiceSync today.</p>
+        </div>
+      </div>
+      <a href="new-complaint.html" class="btn btn-primary btn-sm" id="new-complaint-cta">+ New complaint</a>
+    </div>
+
+    <div class="content">
+      <div class="grid-stats" id="stats-grid">
+        <div class="stat-card"><div class="skeleton" style="height:60px"></div></div>
+        <div class="stat-card"><div class="skeleton" style="height:60px"></div></div>
+        <div class="stat-card"><div class="skeleton" style="height:60px"></div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Recent complaints</h3>
+          <a href="complaints.html" class="btn btn-ghost btn-sm">View all</a>
+        </div>
+        <div class="ticket-list" id="recent-list">
+          <div class="skeleton" style="height:74px;margin-bottom:10px"></div>
+          <div class="skeleton" style="height:74px;margin-bottom:10px"></div>
+          <div class="skeleton" style="height:74px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script>
+  Auth.requireAuth();
+  renderShell('dashboard.html');
+
+  document.getElementById('menu-toggle').innerHTML = ICONS.menu;
+
+  const role = Auth.getRole() || 'USER';
+  document.getElementById('greeting').textContent = `Welcome back, ${Auth.getName()}`;
+  if (role !== 'USER') document.getElementById('new-complaint-cta').remove();
+
+  function statCardHtml({ icon, iconClass, label, value, tag, delay }) {
+    return `
+      <div class="stat-card" style="animation-delay:${delay}ms">
+        <div class="stat-icon ${iconClass}">${icon}</div>
+        <div class="stat-label">${label}</div>
+        <div class="stat-value" data-count="${value}">0</div>
+        <div class="stat-tag">${tag}</div>
+      </div>`;
+  }
+
+  const ICON_TOTAL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4h6l1 2h3a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3z"/><path d="M9 11h6M9 15h6"/></svg>';
+  const ICON_OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+  const ICON_RESOLVED = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>';
+
+  async function loadStats() {
+    try {
+      const stats = await Api.getDashboardStats();
+      const pending = Math.max(stats.totalComplaints - stats.openComplaints - stats.resolvedComplaints, 0);
+      document.getElementById('stats-grid').innerHTML =
+        statCardHtml({ icon: ICON_TOTAL, iconClass: 'ic-blue', label: 'Total complaints', value: stats.totalComplaints, tag: 'all time', delay: 0 }) +
+        statCardHtml({ icon: ICON_OPEN, iconClass: 'ic-amber', label: 'Open', value: stats.openComplaints, tag: 'awaiting action', delay: 80 }) +
+        statCardHtml({ icon: ICON_RESOLVED, iconClass: 'ic-green', label: 'Resolved', value: stats.resolvedComplaints, tag: 'closed out', delay: 160 });
+      document.querySelectorAll('[data-count]').forEach(el => animateCount(el, parseInt(el.dataset.count, 10) || 0));
+    } catch (e) {
+      document.getElementById('stats-grid').innerHTML = `<p class="muted">Couldn't load stats: ${escapeHtml(e.message)}</p>`;
+    }
+  }
+
+  function ticketRowHtml(c, delay) {
+    return `
+      <div class="ticket" data-priority="${c.priority || ''}" style="animation-delay:${delay}ms" onclick="window.location.href='complaint-detail.html?id=${c.id}'">
+        <div>
+          <div class="ticket-id mono">${ticketCode(c.id)}</div>
+          <div class="ticket-title">${escapeHtml(c.title || 'Untitled complaint')}</div>
+          <div class="ticket-meta">
+            <span class="pill">${escapeHtml(c.category || 'General')}</span>
+            <span>${timeAgo(c.createdAt)}</span>
+          </div>
+        </div>
+        <div class="ticket-side">
+          <span class="${statusBadgeClass(c.status)}">${statusLabel(c.status)}</span>
+        </div>
+      </div>`;
+  }
+
+  async function loadRecent() {
+    try {
+      const all = await Api.getAllComplaints();
+      const recent = [...all].sort((a, b) => (b.id || 0) - (a.id || 0)).slice(0, 5);
+      const list = document.getElementById('recent-list');
+      if (recent.length === 0) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="stamp-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4h6l1 2h3a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3z"/></svg></div>
+            <h4>No complaints yet</h4>
+            <p style="margin:0">Nothing has been filed in the system so far.</p>
+          </div>`;
+        return;
+      }
+      list.innerHTML = recent.map((c, i) => ticketRowHtml(c, i * 60)).join('');
+    } catch (e) {
+      document.getElementById('recent-list').innerHTML = `<p class="muted">Couldn't load complaints: ${escapeHtml(e.message)}</p>`;
+    }
+  }
+
+  loadStats();
+  loadRecent();
+</script>
+</body>
+</html>

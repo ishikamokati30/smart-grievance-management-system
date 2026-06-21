@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Complaint detail — ServiceSync</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  .detail-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:22px}
+  @media (max-width:920px){.detail-grid{grid-template-columns:1fr}}
+  .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--ink-500);font-size:13.5px;font-weight:600;margin-bottom:16px}
+  .back-link svg{width:15px;height:15px}
+  .detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:6px;flex-wrap:wrap}
+  .timeline{position:relative;padding-left:22px}
+  .timeline::before{content:"";position:absolute;left:5px;top:4px;bottom:4px;width:2px;background:var(--paper-dim)}
+  .tl-item{position:relative;padding-bottom:20px}
+  .tl-item:last-child{padding-bottom:0}
+  .tl-dot{position:absolute;left:-22px;top:2px;width:11px;height:11px;border-radius:50%;background:var(--ink-300);border:2px solid var(--card)}
+  .tl-item.active .tl-dot{background:var(--amber-500)}
+  .tl-label{font-weight:600;font-size:13.5px}
+  .tl-time{font-size:12px;color:var(--ink-300)}
+  .status-action-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+</style>
+</head>
+<body>
+<div class="paper-bg"></div>
+<div class="app-shell">
+  <div id="shell-mount"></div>
+  <div class="main-col">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="menu-toggle" id="menu-toggle"></button>
+        <div>
+          <h1 class="page-title">Complaint detail</h1>
+          <p class="page-sub">Full record and status history.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <a href="complaints.html" class="back-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Back to complaints</a>
+
+      <div id="loading-state">
+        <div class="panel"><div class="skeleton" style="height:140px"></div></div>
+      </div>
+
+      <div id="detail-content" style="display:none">
+        <div class="detail-grid">
+          <div>
+            <div class="panel">
+              <div class="detail-head">
+                <div>
+                  <div class="ticket-id mono" id="d-id">SS-00000</div>
+                  <h2 id="d-title" style="margin-bottom:6px">—</h2>
+                  <div class="ticket-meta">
+                    <span class="pill" id="d-category">—</span>
+                    <span id="d-priority-pill" class="pill">—</span>
+                    <span id="d-created">—</span>
+                  </div>
+                </div>
+                <span class="badge" id="d-status-badge">—</span>
+              </div>
+              <div class="divider"></div>
+              <h4 style="font-size:14px;margin-bottom:8px">Description</h4>
+              <p id="d-description" class="muted" style="margin:0">—</p>
+            </div>
+
+            <div class="panel" id="staff-actions-panel" style="display:none">
+              <div class="panel-head"><h3>Update status</h3></div>
+              <div class="status-action-grid">
+                <button class="btn btn-ghost btn-sm" data-status="OPEN">Mark Open</button>
+                <button class="btn btn-ghost btn-sm" data-status="IN_PROGRESS">In Progress</button>
+                <button class="btn btn-dark btn-sm" data-status="RESOLVED">Resolved</button>
+                <button class="btn btn-danger btn-sm" data-status="REJECTED">Reject</button>
+              </div>
+            </div>
+
+            <div class="panel" id="admin-actions-panel" style="display:none">
+              <div class="panel-head"><h3>Admin actions</h3></div>
+              <button class="btn btn-danger" id="delete-btn">Delete this complaint</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="panel">
+              <div class="panel-head"><h3>Timeline</h3></div>
+              <div class="timeline" id="timeline"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="error-state" style="display:none" class="panel">
+        <div class="empty-state">
+          <div class="stamp-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+          <h4>Complaint not found</h4>
+          <p id="error-msg" style="margin:0">It may have been removed, or the link is incorrect.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script>
+  Auth.requireAuth();
+  renderShell('complaints.html');
+  document.getElementById('menu-toggle').innerHTML = ICONS.menu;
+
+  const role = Auth.getRole() || 'USER';
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+
+  if (!id) {
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('error-state').style.display = 'block';
+  } else {
+    loadComplaint();
+  }
+
+  function timelineHtml(complaint) {
+    const stages = ['OPEN', 'IN_PROGRESS', 'RESOLVED'];
+    const currentIdx = stages.indexOf((complaint.status || 'OPEN').toUpperCase());
+    const isRejected = (complaint.status || '').toUpperCase() === 'REJECTED';
+
+    if (isRejected) {
+      return `
+        <div class="tl-item active">
+          <span class="tl-dot" style="background:var(--red-600)"></span>
+          <div class="tl-label">Filed</div>
+          <div class="tl-time">${formatDate(complaint.createdAt)}</div>
+        </div>
+        <div class="tl-item active">
+          <span class="tl-dot" style="background:var(--red-600)"></span>
+          <div class="tl-label">Rejected</div>
+          <div class="tl-time">Marked as not actionable</div>
+        </div>`;
+    }
+
+    return stages.map((s, i) => `
+      <div class="tl-item ${i <= currentIdx ? 'active' : ''}">
+        <span class="tl-dot"></span>
+        <div class="tl-label">${statusLabel(s)}</div>
+        <div class="tl-time">${i === 0 ? formatDate(complaint.createdAt) : (i <= currentIdx ? 'Completed' : 'Pending')}</div>
+      </div>`).join('');
+  }
+
+  async function loadComplaint() {
+    try {
+      const c = await Api.getComplaint(id);
+      if (!c || !c.id) throw new Error('Complaint not found');
+
+      document.getElementById('d-id').textContent = ticketCode(c.id);
+      document.getElementById('d-title').textContent = c.title || 'Untitled complaint';
+      document.getElementById('d-category').textContent = c.category || 'General';
+      document.getElementById('d-priority-pill').textContent = `${c.priority || 'Unset'} priority`;
+      document.getElementById('d-created').textContent = formatDate(c.createdAt);
+      document.getElementById('d-description').textContent = c.description || 'No description provided.';
+
+      const badge = document.getElementById('d-status-badge');
+      badge.className = statusBadgeClass(c.status);
+      badge.textContent = statusLabel(c.status);
+
+      document.getElementById('timeline').innerHTML = timelineHtml(c);
+
+      if (role !== 'USER') {
+        const panel = document.getElementById('staff-actions-panel');
+        panel.style.display = 'block';
+        panel.querySelectorAll('[data-status]').forEach(btn => {
+          if (btn.dataset.status === (c.status || 'OPEN').toUpperCase()) {
+            btn.disabled = true;
+            btn.style.opacity = '.5';
+          }
+          btn.addEventListener('click', () => updateStatus(c.id, btn.dataset.status, btn));
+        });
+      }
+
+      if (role === 'ADMIN') {
+        document.getElementById('admin-actions-panel').style.display = 'block';
+        document.getElementById('delete-btn').addEventListener('click', () => deleteComplaint(c.id));
+      }
+
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('detail-content').style.display = 'block';
+    } catch (e) {
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('error-state').style.display = 'block';
+      document.getElementById('error-msg').textContent = e.message || 'It may have been removed, or the link is incorrect.';
+    }
+  }
+
+  async function updateStatus(complaintId, status, btn) {
+    setButtonLoading(btn, true);
+    try {
+      await Api.updateComplaintStatus(complaintId, status);
+      toast(`Status updated to ${statusLabel(status)}`, 'success');
+      loadComplaint();
+    } catch (e) {
+      toast(e.message || 'Could not update status', 'error');
+    } finally {
+      setButtonLoading(btn, false);
+    }
+  }
+
+  async function deleteComplaint(complaintId) {
+    const ok = await confirmAction({
+      title: 'Delete complaint',
+      message: `This permanently removes ${ticketCode(complaintId)}. This cannot be undone.`,
+      confirmLabel: 'Delete',
+      danger: true
+    });
+    if (!ok) return;
+    try {
+      await Api.deleteComplaint(complaintId);
+      toast('Complaint deleted', 'success');
+      setTimeout(() => { window.location.href = 'complaints.html'; }, 500);
+    } catch (e) {
+      toast(e.message || 'Could not delete complaint', 'error');
+    }
+  }
+</script>
+</body>
+</html>

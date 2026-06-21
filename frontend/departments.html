@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Departments — ServiceSync</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  .dept-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+  .dept-card{
+    background:var(--card);border-radius:12px;padding:18px;border:1px solid rgba(21,32,58,.07);
+    opacity:0;transform:translateY(8px);animation:riseIn .4s var(--ease) forwards;
+  }
+  .dept-icon{width:36px;height:36px;border-radius:9px;background:var(--blue-100);color:var(--ink-800);display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+  .dept-icon svg{width:18px;height:18px}
+  .lookup-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:18px}
+  .lookup-row .field{margin-bottom:0;flex:1;max-width:160px}
+</style>
+</head>
+<body>
+<div class="paper-bg"></div>
+<div class="app-shell">
+  <div id="shell-mount"></div>
+  <div class="main-col">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="menu-toggle" id="menu-toggle"></button>
+        <div>
+          <h1 class="page-title">Departments</h1>
+          <p class="page-sub">Departments complaints can be routed to.</p>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" id="add-dept-btn" style="display:none">+ Add department</button>
+    </div>
+
+    <div class="content">
+      <div class="panel">
+        <div class="panel-head"><h3>Known departments</h3></div>
+        <p class="help-text" style="margin-bottom:14px">Departments are looked up by ID. Enter an ID to check, or browse the ones already found below.</p>
+        <div class="lookup-row">
+          <div class="field">
+            <label for="lookup-id">Department ID</label>
+            <input class="input" type="number" id="lookup-id" placeholder="e.g. 1" min="1">
+          </div>
+          <button class="btn btn-ghost" id="lookup-btn">Look up</button>
+        </div>
+        <div class="dept-grid" id="dept-grid">
+          <div class="skeleton" style="height:96px"></div>
+          <div class="skeleton" style="height:96px"></div>
+          <div class="skeleton" style="height:96px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="add-modal">
+  <div class="modal">
+    <h3 style="margin-bottom:16px">Add department</h3>
+    <form id="add-dept-form">
+      <div class="field">
+        <label for="new-dept-name">Department name</label>
+        <input class="input" type="text" id="new-dept-name" placeholder="e.g. Public Works" required>
+        <div class="field-error"></div>
+      </div>
+      <div class="field">
+        <label for="new-dept-email">Contact email</label>
+        <input class="input" type="email" id="new-dept-email" placeholder="publicworks@city.gov" required>
+        <div class="field-error"></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px">
+        <button type="button" class="btn btn-ghost" id="cancel-add-dept">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="save-dept-btn">
+          <span class="spinner"></span><span class="btn-label">Save department</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script>
+  Auth.requireAuth();
+  renderShell('departments.html');
+  document.getElementById('menu-toggle').innerHTML = ICONS.menu;
+
+  const role = Auth.getRole() || 'USER';
+  if (role === 'USER') {
+    window.location.href = 'dashboard.html';
+  }
+  if (role === 'ADMIN') {
+    document.getElementById('add-dept-btn').style.display = 'inline-flex';
+  }
+
+  const DEPT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1"/></svg>';
+
+  function deptCardHtml(d, delay) {
+    return `
+      <div class="dept-card" style="animation-delay:${delay}ms">
+        <div class="dept-icon">${DEPT_ICON}</div>
+        <h4 style="font-size:15px;margin-bottom:4px">${escapeHtml(d.name)}</h4>
+        <p class="muted" style="font-size:12.5px;margin:0">${escapeHtml(d.email || 'No contact email')}</p>
+        <p class="help-text" style="margin-top:8px">ID ${d.id}</p>
+      </div>`;
+  }
+
+  const grid = document.getElementById('dept-grid');
+  let foundDepts = [];
+
+  async function discoverDepartments() {
+    const ids = Array.from({ length: 10 }, (_, i) => i + 1);
+    const results = await Promise.allSettled(ids.map(id => Api.getDepartment(id)));
+    foundDepts = results
+      .map(r => (r.status === 'fulfilled' ? r.value : null))
+      .filter(d => d && d.name);
+    renderGrid();
+  }
+
+  function renderGrid() {
+    if (foundDepts.length === 0) {
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1">
+          <div class="stamp-icon">${DEPT_ICON}</div>
+          <h4>No departments found</h4>
+          <p style="margin:0">${role === 'ADMIN' ? 'Add the first one using the button above.' : 'Ask an admin to add departments.'}</p>
+        </div>`;
+      return;
+    }
+    grid.innerHTML = foundDepts.map((d, i) => deptCardHtml(d, i * 60)).join('');
+  }
+
+  document.getElementById('lookup-btn').addEventListener('click', async () => {
+    const idVal = document.getElementById('lookup-id').value.trim();
+    if (!idVal) return toast('Enter a department ID first', 'error');
+    try {
+      const dept = await Api.getDepartment(idVal);
+      if (!dept || !dept.name) {
+        toast(`No department with ID ${idVal}`, 'error');
+        return;
+      }
+      if (!foundDepts.some(d => d.id === dept.id)) {
+        foundDepts.push(dept);
+        renderGrid();
+      }
+      toast(`Found: ${dept.name}`, 'success');
+    } catch (e) {
+      toast(e.message || 'Lookup failed', 'error');
+    }
+  });
+
+  // Add department modal (admin only)
+  const addModal = document.getElementById('add-modal');
+  document.getElementById('add-dept-btn').addEventListener('click', () => addModal.classList.add('show'));
+  document.getElementById('cancel-add-dept').addEventListener('click', () => addModal.classList.remove('show'));
+  addModal.addEventListener('click', (e) => { if (e.target === addModal) addModal.classList.remove('show'); });
+
+  document.getElementById('add-dept-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nameEl = document.getElementById('new-dept-name');
+    const emailEl = document.getElementById('new-dept-email');
+    [nameEl, emailEl].forEach(clearFieldError);
+
+    let valid = true;
+    if (!nameEl.value.trim()) { showFieldError(nameEl, 'Name is required'); valid = false; }
+    if (!isValidEmail(emailEl.value.trim())) { showFieldError(emailEl, 'Enter a valid email'); valid = false; }
+    if (!valid) return;
+
+    const btn = document.getElementById('save-dept-btn');
+    setButtonLoading(btn, true);
+    try {
+      await Api.createDepartment({ name: nameEl.value.trim(), email: emailEl.value.trim() });
+      toast('Department created', 'success');
+      addModal.classList.remove('show');
+      e.target.reset();
+      discoverDepartments();
+    } catch (err) {
+      toast(err.message || 'Could not create department', 'error');
+    } finally {
+      setButtonLoading(btn, false);
+    }
+  });
+
+  discoverDepartments();
+</script>
+</body>
+</html>
