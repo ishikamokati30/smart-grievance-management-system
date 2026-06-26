@@ -3,7 +3,7 @@
    All endpoints hit /api/admin/* (ADMIN role required)
    ============================================================ */
 
-const API_BASE = (window.SERVICESYNC_API_BASE || 'http://localhost:8080');
+const API_BASE = (window.SERVICESYNC_API_BASE || 'https://servicesync-backend-76h0.onrender.com');
 
 const TOKEN_KEY = 'ss_token';
 const NAME_KEY  = 'ss_name';

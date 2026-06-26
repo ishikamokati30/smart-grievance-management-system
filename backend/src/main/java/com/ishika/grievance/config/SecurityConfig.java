@@ -3,6 +3,7 @@ package com.ishika.grievance.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -35,17 +36,16 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth ->
                         auth
-
+                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                                 .requestMatchers(
-                                        "/api/auth/**",
+                                        "/api/auth/login",
+                                        "/api/auth/register",
                                         "/v3/api-docs/**",
                                         "/api/test-email",
                                         "/swagger-ui/**",
                                         "/swagger-ui.html")
                                 .permitAll()
-
                                 .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
-
                                 .anyRequest()
                                 .authenticated()
                 );
